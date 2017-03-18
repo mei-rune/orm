@@ -66,10 +66,15 @@ func (collection *Collection) Exists() (bool, error) {
 }
 
 // Find defines a new result set with elements from the collection.
-func (collection *Collection) Where() *Result {
-	return &Result{&QueryResult{collection: collection,
+func (collection *Collection) Where(cond ...Cond) *Result {
+	result := &Result{&QueryResult{collection: collection,
 		session:  collection.Engine.Table(collection.tableName),
 		instance: collection.instance}}
+
+	for _, c := range cond {
+		result = result.And(c)
+	}
+	return result
 }
 
 // Name returns the name of the collection.
@@ -102,20 +107,19 @@ type Result struct {
 //   } else {
 //     res.Where(...)
 //   }
-func (result *Result) Where(querystring string, args ...interface{}) *Result {
-	result.session = result.session.And(querystring, args)
-	return result
+func (result *Result) Where(cond Cond) *Result {
+	return result.And(cond)
 }
 
 // Or adds more filtering conditions on top of the existing constraints.
-func (result *Result) Or(querystring string, args ...interface{}) *Result {
-	result.session = result.session.Or(querystring, args)
+func (result *Result) Or(cond Cond) *Result {
+	result.session = result.session.Or(toConds(cond))
 	return result
 }
 
 // And adds more filtering conditions on top of the existing constraints.
-func (result *Result) And(querystring string, args ...interface{}) *Result {
-	result.session = result.session.And(querystring, args)
+func (result *Result) And(cond Cond) *Result {
+	result.session = result.session.And(toConds(cond))
 	return result
 }
 
