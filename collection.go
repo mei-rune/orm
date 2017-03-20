@@ -5,10 +5,47 @@ import (
 	"strings"
 
 	"github.com/go-xorm/xorm"
+	"github.com/lib/pq"
 )
 
+// ErrNotFound record isn't found
 var ErrNotFound = errors.New("record isn't found")
+
+// ErrInsertFail record is create fail
 var ErrInsertFail = errors.New("create record fail")
+
+// ValidationError store the Message & Key of a validation error
+type ValidationError struct {
+	Message, Key string
+}
+
+// Error store a error with validation errors
+type Error struct {
+	Validations []ValidationError
+	e           error
+}
+
+func (err *Error) Error() string {
+	return err.e.Error()
+}
+
+func toError(e error) error {
+	if e == nil {
+		return nil
+	}
+
+	if strings.Contains(e.Error(), "violates unique constraint") {
+		if pe, ok := e.(*pq.Error); ok {
+			detail := strings.TrimPrefix(pe.Detail, "Key (")
+			if pidx := strings.Index(detail, ")"); pidx > 0 {
+				return &Error{Validations: []ValidationError{
+					{Message: pe.Detail, Key: detail[:pidx]},
+				}, e: e}
+			}
+		}
+	}
+	return e
+}
 
 // Collection is an interface that defines methods useful for handling tables.
 type Collection struct {
@@ -33,7 +70,7 @@ func New(instance func() interface{}) func(engine *xorm.Engine) *Collection {
 func (collection *Collection) Insert(bean interface{}) (interface{}, error) {
 	rowsAffected, err := collection.Engine.Table(collection.tableName).InsertOne(bean)
 	if err != nil {
-		return nil, err
+		return nil, toError(err)
 	}
 	if rowsAffected == 0 {
 		return nil, ErrInsertFail
@@ -57,7 +94,7 @@ func (collection *Collection) Insert(bean interface{}) (interface{}, error) {
 // db.ErrUnsupported
 func (collection *Collection) Update(bean interface{}) error {
 	_, err := collection.Engine.Table(collection.tableName).Update(bean)
-	return err
+	return toError(err)
 }
 
 // Exists returns true if the collection exists, false otherwise.
@@ -257,7 +294,7 @@ func (result *IdResult) Delete() error {
 func (result *IdResult) Update(bean interface{}) error {
 	rowsAffected, err := result.session.Id(result.id).Update(bean)
 	if err != nil {
-		return err
+		return toError(err)
 	}
 	if rowsAffected == 0 {
 		return ErrNotFound
