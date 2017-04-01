@@ -49,9 +49,10 @@ func toError(e error) error {
 
 // Collection is an interface that defines methods useful for handling tables.
 type Collection struct {
-	Engine    *xorm.Engine
-	instance  func() interface{}
-	tableName string
+	Engine          *xorm.Engine
+	instance        func() interface{}
+	tableName       string
+	nullableColumns []string
 }
 
 func New(instance func() interface{}) func(engine *xorm.Engine) *Collection {
@@ -68,7 +69,9 @@ func New(instance func() interface{}) func(engine *xorm.Engine) *Collection {
 // by Insert() could be passed directly to Find() to retrieve the newly added
 // element.
 func (collection *Collection) Insert(bean interface{}) (interface{}, error) {
-	rowsAffected, err := collection.Engine.Table(collection.tableName).InsertOne(bean)
+	rowsAffected, err := collection.Engine.Table(collection.tableName).
+		Nullable(collection.nullableColumns...).
+		InsertOne(bean)
 	if err != nil {
 		return nil, toError(err)
 	}
@@ -93,7 +96,9 @@ func (collection *Collection) Insert(bean interface{}) (interface{}, error) {
 // updated. If the database does not support transactions this method returns
 // db.ErrUnsupported
 func (collection *Collection) Update(bean interface{}) error {
-	_, err := collection.Engine.Table(collection.tableName).Update(bean)
+	_, err := collection.Engine.Table(collection.tableName).
+		Nullable(collection.nullableColumns...).
+		Update(bean)
 	return toError(err)
 }
 
@@ -117,6 +122,12 @@ func (collection *Collection) Where(cond ...Cond) *Result {
 // Name returns the name of the collection.
 func (collection *Collection) Name() string {
 	return collection.tableName
+}
+
+func (collection *Collection) Nullable(columns ...string) *Collection {
+	collection.nullableColumns = columns
+
+	return collection
 }
 
 // Id provides converting id as a query condition
