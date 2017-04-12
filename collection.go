@@ -306,8 +306,13 @@ func (result *IdResult) Delete() error {
 }
 
 // Update modifies one item by id.
-func (result *IdResult) Update(bean interface{}) error {
-	rowsAffected, err := result.session.Id(result.id).Update(bean)
+func (result *IdResult) Update(bean interface{}, isAllCols ...bool) error {
+	session := result.session.Id(result.id)
+	if len(isAllCols) == 0 || isAllCols[0] {
+		session = session.AllCols()
+	}
+
+	rowsAffected, err := session.Update(bean)
 	if err != nil {
 		return toError(err)
 	}
