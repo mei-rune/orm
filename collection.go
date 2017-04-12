@@ -183,8 +183,8 @@ func (result *Result) Delete() (int64, error) {
 
 // Update modifies all items within the result set. `Offset()` and `Limit()`
 // are not honoured by `Update()`.
-func (result *Result) Update() (int64, error) {
-	return result.session.Update(result.instance())
+func (result *Result) Update(columns map[string]interface{}) (int64, error) {
+	return result.session.Update(columns)
 }
 
 // Count returns the number of items that match the set conditions. `Offset()`
