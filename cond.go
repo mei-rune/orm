@@ -40,12 +40,12 @@ func toConds(constraints Cond) builder.Cond {
 			ss := strings.Fields(k)
 			switch len(ss) {
 			case 1:
-				if strings.ToLower(k) == "not" {
+				lower := strings.ToLower(k)
+				if lower == "not" {
 					if cond, ok := v.(Cond); ok {
 						return builder.Not{toConds(cond)}
-					} else {
-						panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
 					}
+					panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
 				}
 
 				return builder.Eq(constraints)
@@ -60,6 +60,9 @@ func toConds(constraints Cond) builder.Cond {
 				}
 				panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
 			default:
+				if strings.ToLower(ss[0]) == "exists" {
+					return toExists(k, v)
+				}
 				panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
 			}
 		}
@@ -93,6 +96,10 @@ func toConds(constraints Cond) builder.Cond {
 			}
 			panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
 		default:
+			if lower := strings.ToLower(ss[0]); lower == "exists" || lower == "exists(" {
+				conds = append(conds, toExists(k, v))
+				break
+			}
 			panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
 		}
 	}
@@ -131,6 +138,31 @@ func toNotCond(name, op string, value interface{}) builder.Cond {
 		}
 	}
 	return nil
+}
+
+func toExists(expr string, value interface{}) builder.Cond {
+	return builder.Expr(expr, toArray(value)...)
+}
+
+func toArray(value interface{}) []interface{} {
+	if values, ok := value.([]interface{}); ok {
+		return values
+	}
+
+	v := reflect.ValueOf(value)
+	if v.Kind() != reflect.Slice {
+		return []interface{}{value}
+	}
+	l := v.Len()
+	if l == 0 {
+		return []interface{}{}
+	}
+
+	values := make([]interface{}, 0, l)
+	for i := 0; i < l; i++ {
+		values = append(values, v.Index(i).Interface())
+	}
+	return values
 }
 
 func toCond(name, op string, value interface{}) builder.Cond {
