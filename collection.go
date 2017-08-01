@@ -57,7 +57,7 @@ type Collection struct {
 
 func New(instance func() interface{}) func(engine *xorm.Engine) *Collection {
 	return func(engine *xorm.Engine) *Collection {
-		tableName := engine.Table(instance()).Statement.TableName()
+		tableName := engine.TableInfo(instance()).Name
 		return &Collection{Engine: engine, instance: instance, tableName: tableName}
 	}
 }
@@ -196,22 +196,25 @@ func (result *Result) Count() (int64, error) {
 // QueryResult is an interface that defines methods useful for working with result
 // sets.
 type QueryResult struct {
-	collection *Collection
-	session    *xorm.Session
-	instance   func() interface{}
+	limit, offset int
+	collection    *Collection
+	session       *xorm.Session
+	instance      func() interface{}
 }
 
 // Limit defines the maximum number of results in this set. It only has
 // effect on `One()`, `All()` and `Next()`.
 func (result *QueryResult) Limit(limit int) *QueryResult {
-	result.session = result.session.Limit(limit)
+	result.limit = limit
+	result.session = result.session.Limit(limit, result.offset)
 	return result
 }
 
 // Offset ignores the first *n* results. It only has effect on `One()`, `All()`
 // and `Next()`.
 func (result *QueryResult) Offset(offset int) *QueryResult {
-	result.session.Statement.Start = offset
+	result.offset = offset
+	result.session = result.session.Limit(result.limit, offset)
 	return result
 }
 
