@@ -119,6 +119,13 @@ func (collection *Collection) Where(cond ...Cond) *Result {
 	return result
 }
 
+func (collection *Collection) Query(sqlStr string, args ...interface{}) *RawResult {
+	session := collection.Engine.Sql(sqlStr, args...)
+	result := &RawResult{session: session,
+		instance: collection.instance}
+	return result
+}
+
 // Name returns the name of the collection.
 func (collection *Collection) Name() string {
 	return collection.tableName
@@ -323,4 +330,40 @@ func (result *IdResult) Update(bean interface{}, isAllCols ...bool) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+// RawResult is an interface that defines methods useful for working with result
+// sets.
+type RawResult struct {
+	session  *xorm.Session
+	instance func() interface{}
+}
+
+// Count returns the number of items that match the set conditions. `Offset()`
+// and `Limit()` are not honoured by `Count()`
+func (result *RawResult) Count() (int64, error) {
+	return result.session.Count(result.instance())
+}
+
+// One fetches the first result within the result set and dumps it into the
+// given pointer to struct or pointer to map. The result set is automatically
+// closed after picking the element, so there is no need to call Close()
+// after using One().
+func (result *RawResult) One(ptrToStruct interface{}) error {
+	found, err := result.session.Get(ptrToStruct)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// All fetches all results within the result set and dumps them into the
+// given pointer to slice of maps or structs.  The result set is
+// automatically closed, so there is no need to call Close() after
+// using All().
+func (result *RawResult) All(beans interface{}) error {
+	return result.session.Find(beans)
 }
