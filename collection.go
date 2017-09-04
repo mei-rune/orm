@@ -47,9 +47,39 @@ func toError(e error) error {
 	return e
 }
 
+type Tx struct {
+	Clean   func(sess *xorm.Session)
+	Session *xorm.Session
+}
+
+func (tx *Tx) Commit() error {
+	if tx.Clean != nil {
+		tx.Clean(tx.Session)
+		tx.Clean = nil
+	}
+	return tx.Session.Commit()
+}
+
+func (tx *Tx) Rollback() error {
+	if tx.Clean != nil {
+		tx.Clean(tx.Session)
+		tx.Clean = nil
+	}
+	return tx.Session.Rollback()
+}
+
+func (tx *Tx) Close() error {
+	if tx.Clean != nil {
+		tx.Clean(tx.Session)
+		tx.Clean = nil
+	}
+	return tx.Session.Rollback()
+}
+
 // Collection is an interface that defines methods useful for handling tables.
 type Collection struct {
 	Engine          *xorm.Engine
+	session         *xorm.Session
 	instance        func() interface{}
 	tableName       string
 	nullableColumns []string
@@ -62,6 +92,59 @@ func New(instance func() interface{}) func(engine *xorm.Engine) *Collection {
 	}
 }
 
+func (collection *Collection) WithSession(sess *xorm.Session) *Collection {
+	if collection.session != nil {
+		panic(errors.New("run in the transaction"))
+	}
+
+	copyed := collection.copy()
+	copyed.session = sess
+	return copyed
+}
+
+func (collection *Collection) copy() *Collection {
+	return &Collection{
+		Engine:          collection.Engine,
+		session:         collection.session,
+		instance:        collection.instance,
+		tableName:       collection.tableName,
+		nullableColumns: collection.nullableColumns,
+	}
+}
+
+func (collection *Collection) Begin() (*Tx, error) {
+	if collection.session != nil {
+		return nil, errors.New("run in the transaction")
+	}
+	collection.session = collection.Engine.NewSession()
+	return &Tx{Clean: func(sess *xorm.Session) {
+		if sess != nil {
+			if collection.session != sess {
+				panic("不支持并发事务")
+			}
+		}
+		collection.session = nil
+	}, Session: collection.session}, nil
+}
+
+func (collection *Collection) table(bean interface{}) *xorm.Session {
+	if collection.session == nil {
+		return collection.Engine.Table(bean)
+	}
+	return collection.session.Table(bean)
+}
+
+func (collection *Collection) query(sql string, args ...interface{}) *xorm.Session {
+	if collection.session == nil {
+		return collection.Engine.SQL(sql, args)
+	}
+	return collection.session.SQL(sql, args)
+}
+
+// func (collection *Collection) BeginTransaction() (*Tx, error) {
+// 	collection.Engine.NewSession().Begin()
+// }
+
 // Insert inserts a new item into the collection, it accepts one argument
 // that can be either a map or a struct. If the call suceeds, it returns the
 // ID of the newly added element as an `interface{}` (the underlying type of
@@ -69,7 +152,7 @@ func New(instance func() interface{}) func(engine *xorm.Engine) *Collection {
 // by Insert() could be passed directly to Find() to retrieve the newly added
 // element.
 func (collection *Collection) Insert(bean interface{}) (interface{}, error) {
-	rowsAffected, err := collection.Engine.Table(collection.tableName).
+	rowsAffected, err := collection.table(collection.tableName).
 		Nullable(collection.nullableColumns...).
 		InsertOne(bean)
 	if err != nil {
@@ -96,7 +179,7 @@ func (collection *Collection) Insert(bean interface{}) (interface{}, error) {
 // updated. If the database does not support transactions this method returns
 // db.ErrUnsupported
 func (collection *Collection) Update(bean interface{}) error {
-	_, err := collection.Engine.Table(collection.tableName).
+	_, err := collection.table(collection.tableName).
 		Nullable(collection.nullableColumns...).
 		Update(bean)
 	return toError(err)
@@ -110,7 +193,7 @@ func (collection *Collection) Exists() (bool, error) {
 // Find defines a new result set with elements from the collection.
 func (collection *Collection) Where(cond ...Cond) *Result {
 	result := &Result{&QueryResult{collection: collection,
-		session:  collection.Engine.Table(collection.tableName),
+		session:  collection.table(collection.tableName),
 		instance: collection.instance}}
 
 	for _, c := range cond {
@@ -120,7 +203,7 @@ func (collection *Collection) Where(cond ...Cond) *Result {
 }
 
 func (collection *Collection) Query(sqlStr string, args ...interface{}) *RawResult {
-	session := collection.Engine.Sql(sqlStr, args...)
+	session := collection.query(sqlStr, args...)
 	result := &RawResult{session: session,
 		instance: collection.instance}
 	return result
@@ -132,15 +215,15 @@ func (collection *Collection) Name() string {
 }
 
 func (collection *Collection) Nullable(columns ...string) *Collection {
-	collection.nullableColumns = columns
-
-	return collection
+	copyed := collection.copy()
+	copyed.nullableColumns = columns
+	return copyed
 }
 
 // Id provides converting id as a query condition
 func (collection *Collection) Id(id interface{}) *IdResult {
 	return &IdResult{collection: collection,
-		session:  collection.Engine.Table(collection.tableName),
+		session:  collection.table(collection.tableName),
 		instance: collection.instance,
 		id:       id}
 }
