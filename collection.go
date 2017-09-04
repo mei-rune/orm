@@ -136,9 +136,9 @@ func (collection *Collection) table(bean interface{}) *xorm.Session {
 
 func (collection *Collection) query(sql string, args ...interface{}) *xorm.Session {
 	if collection.session == nil {
-		return collection.Engine.SQL(sql, args)
+		return collection.Engine.SQL(sql, args...)
 	}
-	return collection.session.SQL(sql, args)
+	return collection.session.SQL(sql, args...)
 }
 
 // func (collection *Collection) BeginTransaction() (*Tx, error) {
