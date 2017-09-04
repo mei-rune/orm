@@ -405,7 +405,12 @@ func (result *IdResult) Update(bean interface{}, isAllCols ...bool) error {
 		session = session.AllCols()
 	}
 
-	rowsAffected, err := session.Update(bean)
+	columns := result.collection.nullableColumns
+	if len(columns) > 0 {
+		session = session.Nullable(columns...)
+	}
+
+	rowsAffected, err := session.Nullable().Update(bean)
 	if err != nil {
 		return toError(err)
 	}
@@ -450,3 +455,5 @@ func (result *RawResult) One(ptrToStruct interface{}) error {
 func (result *RawResult) All(beans interface{}) error {
 	return result.session.Find(beans)
 }
+
+// join(a).on()
