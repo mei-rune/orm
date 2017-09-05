@@ -150,7 +150,11 @@ type Inserter interface {
 // Nullable set null when column is zero-value and nullable for insert
 func (collection *Collection) Nullable(columns ...string) Inserter {
 	copyed := collection.copy()
-	copyed.session = copyed.session.Nullable(columns...)
+	if copyed.session == nil {
+		copyed.session = copyed.Engine.NewSession().Nullable(columns...)
+	} else {
+		copyed.session = copyed.session.Nullable(columns...)
+	}
 	return copyed
 }
 
