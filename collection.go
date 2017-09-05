@@ -78,11 +78,10 @@ func (tx *Tx) Close() error {
 
 // Collection is an interface that defines methods useful for handling tables.
 type Collection struct {
-	Engine          *xorm.Engine
-	session         *xorm.Session
-	instance        func() interface{}
-	tableName       string
-	nullableColumns []string
+	Engine    *xorm.Engine
+	session   *xorm.Session
+	instance  func() interface{}
+	tableName string
 }
 
 func New(instance func() interface{}) func(engine *xorm.Engine) *Collection {
@@ -94,7 +93,7 @@ func New(instance func() interface{}) func(engine *xorm.Engine) *Collection {
 
 func (collection *Collection) WithSession(sess *xorm.Session) *Collection {
 	if collection.session != nil {
-		panic(errors.New("run in the transaction"))
+		panic(errors.New("collection is running in the transaction"))
 	}
 
 	copyed := collection.copy()
@@ -104,17 +103,16 @@ func (collection *Collection) WithSession(sess *xorm.Session) *Collection {
 
 func (collection *Collection) copy() *Collection {
 	return &Collection{
-		Engine:          collection.Engine,
-		session:         collection.session,
-		instance:        collection.instance,
-		tableName:       collection.tableName,
-		nullableColumns: collection.nullableColumns,
+		Engine:    collection.Engine,
+		session:   collection.session,
+		instance:  collection.instance,
+		tableName: collection.tableName,
 	}
 }
 
 func (collection *Collection) Begin() (*Tx, error) {
 	if collection.session != nil {
-		return nil, errors.New("run in the transaction")
+		return nil, errors.New("collection is running in the transaction")
 	}
 	collection.session = collection.Engine.NewSession()
 	return &Tx{Clean: func(sess *xorm.Session) {
@@ -141,9 +139,20 @@ func (collection *Collection) query(sql string, args ...interface{}) *xorm.Sessi
 	return collection.session.SQL(sql, args...)
 }
 
-// func (collection *Collection) BeginTransaction() (*Tx, error) {
-// 	collection.Engine.NewSession().Begin()
-// }
+type Inserter interface {
+	// Nullable set null when column is zero-value and nullable for insert
+	Nullable(columns ...string) Inserter
+
+	// Insert record
+	Insert(bean interface{}) (interface{}, error)
+}
+
+// Nullable set null when column is zero-value and nullable for insert
+func (collection *Collection) Nullable(columns ...string) Inserter {
+	copyed := collection.copy()
+	copyed.session = copyed.session.Nullable(columns...)
+	return copyed
+}
 
 // Insert inserts a new item into the collection, it accepts one argument
 // that can be either a map or a struct. If the call suceeds, it returns the
@@ -153,7 +162,6 @@ func (collection *Collection) query(sql string, args ...interface{}) *xorm.Sessi
 // element.
 func (collection *Collection) Insert(bean interface{}) (interface{}, error) {
 	rowsAffected, err := collection.table(collection.tableName).
-		Nullable(collection.nullableColumns...).
 		InsertOne(bean)
 	if err != nil {
 		return nil, toError(err)
@@ -171,18 +179,6 @@ func (collection *Collection) Insert(bean interface{}) (interface{}, error) {
 		return nil, err
 	}
 	return aiValue.Interface(), nil
-}
-
-// Update takes a pointer to map or struct and tries to update the
-// given item on the collection based on the item's primary keys. Once the
-// element is updated, UpdateReturning will query the element that was just
-// updated. If the database does not support transactions this method returns
-// db.ErrUnsupported
-func (collection *Collection) Update(bean interface{}) error {
-	_, err := collection.table(collection.tableName).
-		Nullable(collection.nullableColumns...).
-		Update(bean)
-	return toError(err)
 }
 
 // Exists returns true if the collection exists, false otherwise.
@@ -212,12 +208,6 @@ func (collection *Collection) Query(sqlStr string, args ...interface{}) *RawResu
 // Name returns the name of the collection.
 func (collection *Collection) Name() string {
 	return collection.tableName
-}
-
-func (collection *Collection) Nullable(columns ...string) *Collection {
-	copyed := collection.copy()
-	copyed.nullableColumns = columns
-	return copyed
 }
 
 // Id provides converting id as a query condition
@@ -405,11 +395,6 @@ func (result *IdResult) Update(bean interface{}, isAllCols ...bool) error {
 		session = session.AllCols()
 	}
 
-	columns := result.collection.nullableColumns
-	if len(columns) > 0 {
-		session = session.Nullable(columns...)
-	}
-
 	rowsAffected, err := session.Nullable().Update(bean)
 	if err != nil {
 		return toError(err)
@@ -418,6 +403,35 @@ func (result *IdResult) Update(bean interface{}, isAllCols ...bool) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+// Omit only not use the parameters as select or update columns
+func (result *IdResult) Omit(columns ...string) Updater {
+	result.session = result.session.Omit(columns...)
+	return result
+}
+
+// Nullable set null when column is zero-value and nullable for update
+func (result *IdResult) Nullable(columns ...string) Updater {
+	result.session = result.session.Nullable(columns...)
+	return result
+}
+
+// Cols only use the parameters as update columns
+func (result *IdResult) Cols(columns ...string) Updater {
+	result.session = result.session.Cols(columns...)
+	return result
+}
+
+type Updater interface {
+	// Cols only use the parameters as update columns
+	Cols(columns ...string) Updater
+	// Omit only not use the parameters as select or update columns
+	Omit(columns ...string) Updater
+	// Nullable set null when column is zero-value and nullable for update
+	Nullable(columns ...string) Updater
+	// Update records
+	Update(bean interface{}, isAllCols ...bool) error
 }
 
 // RawResult is an interface that defines methods useful for working with result
@@ -455,5 +469,3 @@ func (result *RawResult) One(ptrToStruct interface{}) error {
 func (result *RawResult) All(beans interface{}) error {
 	return result.session.Find(beans)
 }
-
-// join(a).on()
