@@ -214,6 +214,10 @@ func (collection *Collection) Name() string {
 	return collection.tableName
 }
 
+func (collection *Collection) ID(id interface{}) *IdResult {
+	return collection.Id(id)
+}
+
 // Id provides converting id as a query condition
 func (collection *Collection) Id(id interface{}) *IdResult {
 	return &IdResult{collection: collection,
