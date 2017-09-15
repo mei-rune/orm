@@ -2,6 +2,7 @@ package orm
 
 import (
 	"errors"
+	"reflect"
 	"strings"
 
 	"github.com/go-xorm/xorm"
@@ -363,6 +364,17 @@ func (result *QueryResult) All(beans interface{}) error {
 	return result.session.Find(beans)
 }
 
+// ForEach record by record handle records from table, condiBeans's non-empty fields
+// are conditions. beans could be []Struct, []*Struct, map[int64]Struct
+// map[int64]*Struct
+func (result *QueryResult) ForEach(cb func(i int, read func(bean interface{}) error) error) error {
+	return result.session.Iterate(result.instance(), func(i int, instance interface{}) error {
+		return cb(i, func(bean interface{}) error {
+			return copyStruct(bean, instance)
+		})
+	})
+}
+
 // IdResult is an interface that defines methods useful for working with result
 // sets.
 type IdResult struct {
@@ -476,4 +488,25 @@ func (result *RawResult) One(ptrToStruct interface{}) error {
 // using All().
 func (result *RawResult) All(beans interface{}) error {
 	return result.session.Find(beans)
+}
+
+// ForEach record by record handle records from table, condiBeans's non-empty fields
+// are conditions. beans could be []Struct, []*Struct, map[int64]Struct
+// map[int64]*Struct
+func (result *RawResult) ForEach(cb func(i int, read func(bean interface{}) error) error) error {
+	return result.session.Iterate(result.instance(), func(i int, instance interface{}) error {
+		return cb(i, func(bean interface{}) error {
+			return copyStruct(bean, instance)
+		})
+	})
+}
+
+func copyStruct(fromValue, toValue interface{}) error {
+	var (
+		from = reflect.ValueOf(fromValue)
+		to   = reflect.ValueOf(toValue)
+	)
+
+	to.Elem().Set(from.Elem())
+	return nil
 }
