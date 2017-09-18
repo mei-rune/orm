@@ -328,6 +328,12 @@ func (result *QueryResult) Asc(colNames ...string) *QueryResult {
 	return result
 }
 
+// Columns only use the parameters as select columns
+func (result *QueryResult) Columns(colNames ...string) *QueryResult {
+	result.session = result.session.Cols(colNames...)
+	return result
+}
+
 // GroupBy is used to group results that have the same value in the same column
 // or columns.
 func (result *QueryResult) GroupBy(keys ...string) *QueryResult {
