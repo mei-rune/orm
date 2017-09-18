@@ -31,7 +31,7 @@ import (
 //  db.Cond{"age >": 32, "age <": 35}
 type Cond map[string]interface{}
 
-func toConds(constraints Cond) builder.Cond {
+func toConds(constraints Cond, concat func(conds ...builder.Cond) builder.Cond) builder.Cond {
 	if len(constraints) == 0 {
 		panic(errors.New("constraints is empty"))
 	}
@@ -43,7 +43,13 @@ func toConds(constraints Cond) builder.Cond {
 				lower := strings.ToLower(k)
 				if lower == "not" {
 					if cond, ok := v.(Cond); ok {
-						return builder.Not{toConds(cond)}
+						return builder.Not{toConds(cond, concat)}
+					}
+					panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
+				}
+				if lower == "or" {
+					if cond, ok := v.(Cond); ok {
+						return toConds(cond, builder.Or)
 					}
 					panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
 				}
@@ -77,7 +83,16 @@ func toConds(constraints Cond) builder.Cond {
 			if strings.ToLower(k) == "not" {
 				if cond, ok := v.(Cond); ok {
 					deleted = append(deleted, k)
-					conds = append(conds, builder.Not{toConds(cond)})
+					conds = append(conds, builder.Not{toConds(cond, concat)})
+				} else {
+					panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
+				}
+			}
+
+			if strings.ToLower(k) == "or" {
+				if cond, ok := v.(Cond); ok {
+					deleted = append(deleted, k)
+					conds = append(conds, toConds(cond, builder.Or))
 				} else {
 					panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
 				}
@@ -105,6 +120,13 @@ func toConds(constraints Cond) builder.Cond {
 	}
 	deletedSize := len(deleted)
 	if deletedSize == 0 {
+		if concat != nil {
+			conds = make([]builder.Cond, 0, len(constraints))
+			for k, v := range constraints {
+				conds = append(conds, builder.Eq{k: v})
+			}
+			return concat(conds...)
+		}
 		return builder.Eq(constraints)
 	}
 
@@ -125,6 +147,9 @@ func toConds(constraints Cond) builder.Cond {
 		conds = append(conds, builder.Eq(newCopy))
 	}
 
+	if concat != nil {
+		return concat(conds...)
+	}
 	return builder.And(conds...)
 }
 

@@ -251,7 +251,7 @@ func (result *Result) Where(cond Cond) *Result {
 // Or adds more filtering conditions on top of the existing constraints.
 func (result *Result) Or(cond Cond) *Result {
 	if len(cond) != 0 {
-		result.session = result.session.Or(toConds(cond))
+		result.session = result.session.Or(toConds(cond, nil))
 	}
 	return result
 }
@@ -259,7 +259,7 @@ func (result *Result) Or(cond Cond) *Result {
 // And adds more filtering conditions on top of the existing constraints.
 func (result *Result) And(cond Cond) *Result {
 	if len(cond) != 0 {
-		result.session = result.session.And(toConds(cond))
+		result.session = result.session.And(toConds(cond, nil))
 	}
 	return result
 }
