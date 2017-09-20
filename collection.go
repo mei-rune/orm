@@ -148,6 +148,21 @@ type Inserter interface {
 	Insert(bean interface{}) (interface{}, error)
 }
 
+// Queryer
+type Queryer interface {
+	// One fetches the first result within the result set and dumps it into the
+	// given pointer to struct or pointer to map. The result set is automatically
+	// closed after picking the element, so there is no need to call Close()
+	// after using One().
+	One(ptrToStruct interface{}) error
+
+	// All fetches all results within the result set and dumps them into the
+	// given pointer to slice of maps or structs.  The result set is
+	// automatically closed, so there is no need to call Close() after
+	// using All().
+	All(beans interface{}) error
+}
+
 // Nullable set null when column is zero-value and nullable for insert
 func (collection *Collection) Nullable(columns ...string) Inserter {
 	copyed := collection.copy()
