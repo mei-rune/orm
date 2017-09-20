@@ -205,7 +205,7 @@ func (collection *Collection) Where(cond ...Cond) *Result {
 
 func (collection *Collection) Query(sqlStr string, args ...interface{}) *RawResult {
 	session := collection.query(sqlStr, args...)
-	result := &RawResult{session: session,
+	result := &RawResult{RawQueryResult: RawQueryResult{session: session},
 		instance: collection.instance}
 	return result
 }
@@ -215,13 +215,13 @@ func (collection *Collection) Name() string {
 	return collection.tableName
 }
 
-func (collection *Collection) ID(id interface{}) *IdResult {
+func (collection *Collection) ID(id interface{}) *IDResult {
 	return collection.Id(id)
 }
 
 // Id provides converting id as a query condition
-func (collection *Collection) Id(id interface{}) *IdResult {
-	return &IdResult{collection: collection,
+func (collection *Collection) Id(id interface{}) *IDResult {
+	return &IDResult{collection: collection,
 		session:  collection.table(collection.tableName),
 		instance: collection.instance,
 		id:       id}
@@ -381,9 +381,9 @@ func (result *QueryResult) ForEach(cb func(i int, read func(bean interface{}) er
 	})
 }
 
-// IdResult is an interface that defines methods useful for working with result
+// IDResult is an interface that defines methods useful for working with result
 // sets.
-type IdResult struct {
+type IDResult struct {
 	collection *Collection
 	session    *xorm.Session
 	instance   func() interface{}
@@ -391,7 +391,7 @@ type IdResult struct {
 }
 
 // Get get one item by id.
-func (result *IdResult) Get(bean interface{}) error {
+func (result *IDResult) Get(bean interface{}) error {
 	found, err := result.session.Id(result.id).Get(bean)
 	if err != nil {
 		return err
@@ -403,7 +403,7 @@ func (result *IdResult) Get(bean interface{}) error {
 }
 
 // Delete deletes one item by id.
-func (result *IdResult) Delete() error {
+func (result *IDResult) Delete() error {
 	rowsAffected, err := result.session.Id(result.id).Delete(result.instance())
 	if err != nil {
 		return err
@@ -415,7 +415,7 @@ func (result *IdResult) Delete() error {
 }
 
 // Update modifies one item by id.
-func (result *IdResult) Update(bean interface{}, isAllCols ...bool) error {
+func (result *IDResult) Update(bean interface{}, isAllCols ...bool) error {
 	session := result.session.Id(result.id)
 	if len(isAllCols) == 0 || isAllCols[0] {
 		session = session.AllCols()
@@ -432,19 +432,19 @@ func (result *IdResult) Update(bean interface{}, isAllCols ...bool) error {
 }
 
 // Omit only not use the parameters as select or update columns
-func (result *IdResult) Omit(columns ...string) Updater {
+func (result *IDResult) Omit(columns ...string) Updater {
 	result.session = result.session.Omit(columns...)
 	return result
 }
 
 // Nullable set null when column is zero-value and nullable for update
-func (result *IdResult) Nullable(columns ...string) Updater {
+func (result *IDResult) Nullable(columns ...string) Updater {
 	result.session = result.session.Nullable(columns...)
 	return result
 }
 
 // Columns only use the parameters as update columns
-func (result *IdResult) Columns(columns ...string) Updater {
+func (result *IDResult) Columns(columns ...string) Updater {
 	result.session = result.session.Cols(columns...)
 	return result
 }
@@ -463,7 +463,7 @@ type Updater interface {
 // RawResult is an interface that defines methods useful for working with result
 // sets.
 type RawResult struct {
-	session  *xorm.Session
+	RawQueryResult
 	instance func() interface{}
 }
 
@@ -473,11 +473,28 @@ func (result *RawResult) Count() (int64, error) {
 	return result.session.Count(result.instance())
 }
 
+// ForEach record by record handle records from table, condiBeans's non-empty fields
+// are conditions. beans could be []Struct, []*Struct, map[int64]Struct
+// map[int64]*Struct
+func (result *RawResult) ForEach(cb func(i int, read func(bean interface{}) error) error) error {
+	return result.session.Iterate(result.instance(), func(i int, instance interface{}) error {
+		return cb(i, func(bean interface{}) error {
+			return copyStruct(bean, instance)
+		})
+	})
+}
+
+// RawQueryResult is an interface that defines methods useful for working with result
+// sets.
+type RawQueryResult struct {
+	session *xorm.Session
+}
+
 // One fetches the first result within the result set and dumps it into the
 // given pointer to struct or pointer to map. The result set is automatically
 // closed after picking the element, so there is no need to call Close()
 // after using One().
-func (result *RawResult) One(ptrToStruct interface{}) error {
+func (result *RawQueryResult) One(ptrToStruct interface{}) error {
 	found, err := result.session.Get(ptrToStruct)
 	if err != nil {
 		return err
@@ -492,19 +509,8 @@ func (result *RawResult) One(ptrToStruct interface{}) error {
 // given pointer to slice of maps or structs.  The result set is
 // automatically closed, so there is no need to call Close() after
 // using All().
-func (result *RawResult) All(beans interface{}) error {
+func (result *RawQueryResult) All(beans interface{}) error {
 	return result.session.Find(beans)
-}
-
-// ForEach record by record handle records from table, condiBeans's non-empty fields
-// are conditions. beans could be []Struct, []*Struct, map[int64]Struct
-// map[int64]*Struct
-func (result *RawResult) ForEach(cb func(i int, read func(bean interface{}) error) error) error {
-	return result.session.Iterate(result.instance(), func(i int, instance interface{}) error {
-		return cb(i, func(bean interface{}) error {
-			return copyStruct(bean, instance)
-		})
-	})
 }
 
 func copyStruct(fromValue, toValue interface{}) error {
