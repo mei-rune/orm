@@ -443,15 +443,15 @@ func (result *IdResult) Nullable(columns ...string) Updater {
 	return result
 }
 
-// Cols only use the parameters as update columns
-func (result *IdResult) Cols(columns ...string) Updater {
+// Columns only use the parameters as update columns
+func (result *IdResult) Columns(columns ...string) Updater {
 	result.session = result.session.Cols(columns...)
 	return result
 }
 
 type Updater interface {
 	// Cols only use the parameters as update columns
-	Cols(columns ...string) Updater
+	Columns(columns ...string) Updater
 	// Omit only not use the parameters as select or update columns
 	Omit(columns ...string) Updater
 	// Nullable set null when column is zero-value and nullable for update
