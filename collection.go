@@ -355,6 +355,12 @@ func (result *QueryResult) Columns(colNames ...string) *QueryResult {
 	return result
 }
 
+// Omit only not use the parameters as select or update columns
+func (result *QueryResult) Omit(columns ...string) *QueryResult {
+	result.session = result.session.Omit(columns...)
+	return result
+}
+
 // GroupBy is used to group results that have the same value in the same column
 // or columns.
 func (result *QueryResult) GroupBy(keys ...string) *QueryResult {
