@@ -92,6 +92,12 @@ func New(instance func() interface{}) func(engine *xorm.Engine) *Collection {
 	}
 }
 
+func NewWithNoInstance() func(engine *xorm.Engine) *Collection {
+	return func(engine *xorm.Engine) *Collection {
+		return &Collection{Engine: engine}
+	}
+}
+
 func (collection *Collection) WithSession(sess *xorm.Session) *Collection {
 	if collection.session != nil {
 		panic(errors.New("collection is running in the transaction"))
