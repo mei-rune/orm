@@ -37,6 +37,9 @@ func toConds(constraints Cond, concat func(conds ...builder.Cond) builder.Cond) 
 	}
 	if len(constraints) == 1 {
 		for k, v := range constraints {
+			if v == nil {
+				return builder.Expr(k)
+			}
 			ss := strings.Fields(k)
 			switch len(ss) {
 			case 1:
@@ -77,6 +80,12 @@ func toConds(constraints Cond, concat func(conds ...builder.Cond) builder.Cond) 
 	var deleted []string
 	var conds = make([]builder.Cond, 0, len(constraints))
 	for k, v := range constraints {
+		if v == nil {
+			deleted = append(deleted, k)
+			conds = append(conds, builder.Expr(k))
+			continue
+		}
+
 		ss := strings.Fields(k)
 		switch len(ss) {
 		case 1:
