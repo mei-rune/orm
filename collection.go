@@ -180,6 +180,17 @@ func (collection *Collection) Nullable(columns ...string) Inserter {
 	return copyed
 }
 
+// Omit set null when column is zero-value and nullable for insert
+func (collection *Collection) Omit(columns ...string) Inserter {
+	copyed := collection.copy()
+	if copyed.session == nil {
+		copyed.session = copyed.Engine.NewSession().Omit(columns...)
+	} else {
+		copyed.session = copyed.session.Omit(columns...)
+	}
+	return copyed
+}
+
 // Insert inserts a new item into the collection, it accepts one argument
 // that can be either a map or a struct. If the call suceeds, it returns the
 // ID of the newly added element as an `interface{}` (the underlying type of
