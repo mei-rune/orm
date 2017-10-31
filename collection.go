@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"database/sql"
 	"errors"
 	"reflect"
 	"strings"
@@ -147,6 +148,13 @@ func (collection *Collection) query(sql string, args ...interface{}) *xorm.Sessi
 	return collection.session.SQL(sql, args...)
 }
 
+func (collection *Collection) Exec(sqlStr string, args ...interface{}) (sql.Result, error) {
+	if collection.session == nil {
+		return collection.Engine.Exec(sqlStr, args...)
+	}
+	return collection.session.Exec(sqlStr, args...)
+}
+
 type Inserter interface {
 	// Nullable set null when column is zero-value and nullable for insert
 	Nullable(columns ...string) Inserter
@@ -226,7 +234,6 @@ func (collection *Collection) Exists() (bool, error) {
 
 // Find defines a new result set with elements from the collection.
 func (collection *Collection) Where(args ...interface{}) *Result {
-
 	result := &Result{&QueryResult{collection: collection,
 		session:  collection.table(collection.tableName),
 		instance: collection.instance}}
