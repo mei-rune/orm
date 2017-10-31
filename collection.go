@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/go-xorm/builder"
 	"github.com/go-xorm/xorm"
 	"github.com/lib/pq"
 )
@@ -224,13 +225,24 @@ func (collection *Collection) Exists() (bool, error) {
 }
 
 // Find defines a new result set with elements from the collection.
-func (collection *Collection) Where(cond ...Cond) *Result {
+func (collection *Collection) Where(args ...interface{}) *Result {
+
 	result := &Result{&QueryResult{collection: collection,
 		session:  collection.table(collection.tableName),
 		instance: collection.instance}}
+	if len(args) != 0 {
+		if len(args) == 1 {
+			if c, ok := args[0].(Cond); ok {
+				return result.And(c)
+			}
+		}
 
-	for _, c := range cond {
-		result = result.And(c)
+		sqlStr, ok := args[0].(string)
+		if !ok {
+			panic(errors.New("Where() 参数不正确，只能是一个 orm.Cond 对象，或一个字符串加多个参数"))
+		}
+
+		result.session = result.session.And(builder.Expr(sqlStr, args[1:]...))
 	}
 	return result
 }
