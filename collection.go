@@ -478,7 +478,7 @@ func (result *IDResult) Update(bean interface{}, isAllCols ...bool) error {
 		session = session.AllCols()
 	}
 
-	rowsAffected, err := session.Nullable().Update(bean)
+	rowsAffected, err := session.Update(bean)
 	if err != nil {
 		return toError(err)
 	}
