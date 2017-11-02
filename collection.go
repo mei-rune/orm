@@ -190,7 +190,7 @@ func (collection *Collection) Nullable(columns ...string) Inserter {
 }
 
 // Omit set null when column is zero-value and nullable for insert
-func (collection *Collection) Omit(columns ...string) Inserter {
+func (collection *Collection) Omit(columns ...string) *Collection {
 	copyed := collection.copy()
 	if copyed.session == nil {
 		copyed.session = copyed.Engine.NewSession().Omit(columns...)
@@ -489,7 +489,7 @@ func (result *IDResult) Update(bean interface{}, isAllCols ...bool) error {
 }
 
 // Omit only not use the parameters as select or update columns
-func (result *IDResult) Omit(columns ...string) Updater {
+func (result *IDResult) Omit(columns ...string) ByID {
 	result.session = result.session.Omit(columns...)
 	return result
 }
@@ -509,12 +509,20 @@ func (result *IDResult) Columns(columns ...string) Updater {
 type Updater interface {
 	// Cols only use the parameters as update columns
 	Columns(columns ...string) Updater
-	// Omit only not use the parameters as select or update columns
-	Omit(columns ...string) Updater
 	// Nullable set null when column is zero-value and nullable for update
 	Nullable(columns ...string) Updater
 	// Update records
 	Update(bean interface{}, isAllCols ...bool) error
+}
+
+type ByID interface {
+	Updater
+
+	// Get get one item by id.
+	Get(bean interface{}) error
+
+	// Omit only not use the parameters as select or update columns
+	Omit(columns ...string) ByID
 }
 
 // RawResult is an interface that defines methods useful for working with result
