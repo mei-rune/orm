@@ -266,12 +266,12 @@ func (collection *Collection) Name() string {
 	return collection.tableName
 }
 
-func (collection *Collection) ID(id interface{}) *IDResult {
-	return collection.Id(id)
+func (collection *Collection) Id(id interface{}) *IDResult {
+	return collection.ID(id)
 }
 
 // Id provides converting id as a query condition
-func (collection *Collection) Id(id interface{}) *IDResult {
+func (collection *Collection) ID(id interface{}) *IDResult {
 	return &IDResult{collection: collection,
 		session:  collection.table(collection.tableName),
 		instance: collection.instance,
