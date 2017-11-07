@@ -32,7 +32,7 @@ func (err *Error) Error() string {
 	return err.e.Error()
 }
 
-func toError(e error) error {
+func toError(e error, keyFor func(string) string) error {
 	if e == nil {
 		return nil
 	}
@@ -42,7 +42,7 @@ func toError(e error) error {
 			detail := strings.TrimPrefix(pe.Detail, "Key (")
 			if pidx := strings.Index(detail, ")"); pidx > 0 {
 				return &Error{Validations: []ValidationError{
-					{Message: pe.Detail, Key: detail[:pidx]},
+					{Message: pe.Detail, Key: keyFor(detail[:pidx])},
 				}, e: e}
 			}
 		}
@@ -84,10 +84,11 @@ type Collection struct {
 	Engine    *xorm.Engine
 	session   *xorm.Session
 	instance  func() interface{}
+	keyFor    func(string) string
 	tableName string
 }
 
-func New(instance func() interface{}) func(engine *xorm.Engine) *Collection {
+func New(instance func() interface{}, keyFor func(string) string) func(engine *xorm.Engine) *Collection {
 	return func(engine *xorm.Engine) *Collection {
 		tableName := engine.TableInfo(instance()).Name
 		return &Collection{Engine: engine, instance: instance, tableName: tableName}
@@ -96,8 +97,12 @@ func New(instance func() interface{}) func(engine *xorm.Engine) *Collection {
 
 func NewWithNoInstance() func(engine *xorm.Engine) *Collection {
 	return func(engine *xorm.Engine) *Collection {
-		return &Collection{Engine: engine}
+		return &Collection{Engine: engine, keyFor: keyForNull}
 	}
+}
+
+func keyForNull(s string) string {
+	return s
 }
 
 func (collection *Collection) WithSession(sess *xorm.Session) *Collection {
@@ -210,7 +215,7 @@ func (collection *Collection) Insert(bean interface{}) (interface{}, error) {
 	rowsAffected, err := collection.table(collection.tableName).
 		InsertOne(bean)
 	if err != nil {
-		return nil, toError(err)
+		return nil, toError(err, collection.keyFor)
 	}
 	if rowsAffected == 0 {
 		return nil, ErrInsertFail
@@ -480,7 +485,7 @@ func (result *IDResult) Update(bean interface{}, isAllCols ...bool) error {
 
 	rowsAffected, err := session.Update(bean)
 	if err != nil {
-		return toError(err)
+		return toError(err, collection.keyFor)
 	}
 	if rowsAffected == 0 {
 		return ErrNotFound
