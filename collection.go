@@ -485,7 +485,10 @@ func (result *IDResult) Update(bean interface{}, isAllCols ...bool) error {
 
 	rowsAffected, err := session.Update(bean)
 	if err != nil {
-		return toError(err, collection.keyFor)
+		if result.collection == nil {
+			return toError(err, keyForNull)
+		}
+		return toError(err, result.collection.keyFor)
 	}
 	if rowsAffected == 0 {
 		return ErrNotFound
