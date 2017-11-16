@@ -48,7 +48,9 @@ func (db *DB) Rollback() error {
 }
 
 func (db *DB) Close() error {
-	db.Close()
+	if db.Session != nil {
+		db.Session.Close()
+	}
 	return nil
 }
 
