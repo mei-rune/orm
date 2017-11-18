@@ -120,6 +120,7 @@ func (collection *Collection) copy() *Collection {
 		Engine:    collection.Engine,
 		session:   collection.session,
 		instance:  collection.instance,
+		keyFor:    collection.keyFor,
 		tableName: collection.tableName,
 	}
 }
