@@ -91,7 +91,7 @@ type Collection struct {
 func New(instance func() interface{}, keyFor func(string) string) func(engine *xorm.Engine) *Collection {
 	return func(engine *xorm.Engine) *Collection {
 		tableName := engine.TableInfo(instance()).Name
-		return &Collection{Engine: engine, instance: instance, tableName: tableName}
+		return &Collection{Engine: engine, instance: instance, keyFor: keyFor, tableName: tableName}
 	}
 }
 
