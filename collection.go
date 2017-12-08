@@ -43,13 +43,13 @@ func toError(e error, keyFor func(string) string) error {
 			detail := strings.TrimPrefix(pe.Detail, "Key (")
 			if pidx := strings.Index(detail, ")"); pidx > 0 {
 				return &Error{Validations: []ValidationError{
-					{Message: "value_already_exists", Detail: pe.Detail, Key: keyFor(detail[:pidx])},
+					{Message: "unique_value_already_exists", Detail: pe.Detail, Key: keyFor(detail[:pidx])},
 				}, e: e}
 			}
 		default:
 			if pe.Column != "" {
 				return &Error{Validations: []ValidationError{
-					{Message: "value_already_exists", Detail: pe.Detail, Key: keyFor(pe.Column)},
+					{Message: "PG." + pe.Code.Name(), Detail: pe.Detail, Key: keyFor(pe.Column)},
 				}, e: e}
 			}
 		}
