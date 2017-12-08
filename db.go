@@ -20,6 +20,9 @@ type DB struct {
 // 		return nil, errors.New("run in the transaction")
 // 	}
 // 	session := db.Engine.NewSession()
+//  if err := session.Begin(); err != nil {
+// 	  return nil, err
+//  }
 // 	return &DB{Engine: db.Engine, session: session}, nil
 // }
 
