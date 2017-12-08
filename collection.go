@@ -19,7 +19,7 @@ var ErrInsertFail = errors.New("create record fail")
 
 // ValidationError store the Message & Key of a validation error
 type ValidationError struct {
-	Message, Key string
+	Message, Detail, Key string
 }
 
 // Error store a error with validation errors
@@ -37,12 +37,19 @@ func toError(e error, keyFor func(string) string) error {
 		return nil
 	}
 
-	if strings.Contains(e.Error(), "violates unique constraint") {
-		if pe, ok := e.(*pq.Error); ok {
+	if pe, ok := e.(*pq.Error); ok {
+		switch pe.Code {
+		case "23505":
 			detail := strings.TrimPrefix(pe.Detail, "Key (")
 			if pidx := strings.Index(detail, ")"); pidx > 0 {
 				return &Error{Validations: []ValidationError{
-					{Message: pe.Detail, Key: keyFor(detail[:pidx])},
+					{Message: "value_already_exists", Detail: pe.Detail, Key: keyFor(detail[:pidx])},
+				}, e: e}
+			}
+		default:
+			if pe.Column != "" {
+				return &Error{Validations: []ValidationError{
+					{Message: "value_already_exists", Detail: pe.Detail, Key: keyFor(pe.Column)},
 				}, e: e}
 			}
 		}
