@@ -40,12 +40,13 @@ func toError(e error, keyFor func(string) string) error {
 	if pe, ok := e.(*pq.Error); ok {
 		switch pe.Code {
 		case "23505":
-			detail := strings.TrimPrefix(pe.Detail, "Key (")
+			detail := strings.TrimPrefix(strings.TrimPrefix(pe.Detail, "Key ("), "键值\"(")
 			if pidx := strings.Index(detail, ")"); pidx > 0 {
 				return &Error{Validations: []ValidationError{
 					{Code: "unique_value_already_exists", Message: pe.Detail, Key: keyFor(detail[:pidx])},
 				}, e: e}
 			}
+			// fmt.Println("==========================", fmt.Sprintf("%#v", e))
 		default:
 			if pe.Column != "" {
 				return &Error{Validations: []ValidationError{
