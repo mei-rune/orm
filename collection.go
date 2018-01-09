@@ -518,14 +518,12 @@ func (result *IDResult) Nullable(columns ...string) Updater {
 }
 
 // Columns only use the parameters as update columns
-func (result *IDResult) Columns(columns ...string) Updater {
+func (result *IDResult) Columns(columns ...string) ByID {
 	result.session = result.session.Cols(columns...)
 	return result
 }
 
 type Updater interface {
-	// Cols only use the parameters as update columns
-	Columns(columns ...string) Updater
 	// Nullable set null when column is zero-value and nullable for update
 	Nullable(columns ...string) Updater
 	// Update records
@@ -540,6 +538,9 @@ type ByID interface {
 
 	// Omit only not use the parameters as select or update columns
 	Omit(columns ...string) ByID
+
+	// Cols only use the parameters as update columns
+	Columns(columns ...string) ByID
 }
 
 // RawResult is an interface that defines methods useful for working with result

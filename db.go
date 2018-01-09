@@ -41,6 +41,13 @@ func (db *DB) Commit() error {
 	return err
 }
 
+// func (db *DB) Tx() *sql.Tx {
+// 	if db.Session == nil {
+// 		return nil
+// 	}
+// 	return db.Session.Tx()
+// }
+
 func (db *DB) Rollback() error {
 	if db.Session == nil {
 		return sql.ErrTxDone
