@@ -46,13 +46,15 @@ func toError(e error, keyFor func(string) string) error {
 					{Code: "unique_value_already_exists", Message: pe.Detail, Key: keyFor(detail[:pidx])},
 				}, e: e}
 			}
-			// fmt.Println("==========================", fmt.Sprintf("%#v", e))
+		// case "23503":
+		// 	return &Error{Validations: []ValidationError{
+		// 		{Code: "PG.foreign_key_constraint", Message: pe.Message},
+		// 	}, e: e}
 		default:
-			if pe.Column != "" {
-				return &Error{Validations: []ValidationError{
-					{Code: "PG." + pe.Code.Name(), Message: pe.Detail, Key: keyFor(pe.Column)},
-				}, e: e}
-			}
+
+			return &Error{Validations: []ValidationError{
+				{Code: "PG." + pe.Code.Name(), Message: pe.Message, Key: keyFor(pe.Column)},
+			}, e: e}
 		}
 	}
 	return e
@@ -332,19 +334,22 @@ func (result *Result) And(cond Cond) *Result {
 // Delete deletes all items within the result set. `Offset()` and `Limit()` are
 // not honoured by `Delete()`.
 func (result *Result) Delete() (int64, error) {
-	return result.session.Delete(result.instance())
+	rowEffected, err := result.session.Delete(result.instance())
+	return rowEffected, toError(err, result.collection.keyFor)
 }
 
 // Update modifies all items within the result set. `Offset()` and `Limit()`
 // are not honoured by `Update()`.
 func (result *Result) Update(columns map[string]interface{}) (int64, error) {
-	return result.session.Update(columns)
+	rowEffected, err := result.session.Update(columns)
+	return rowEffected, toError(err, result.collection.keyFor)
 }
 
 // Count returns the number of items that match the set conditions. `Offset()`
 // and `Limit()` are not honoured by `Count()`
 func (result *Result) Count() (int64, error) {
-	return result.session.Count(result.instance())
+	count, err := result.session.Count(result.instance())
+	return count, toError(err, result.collection.keyFor)
 }
 
 // QueryResult is an interface that defines methods useful for working with result
@@ -425,7 +430,7 @@ func (result *QueryResult) Having(conditions string) *QueryResult {
 func (result *QueryResult) One(ptrToStruct interface{}) error {
 	found, err := result.session.Get(ptrToStruct)
 	if err != nil {
-		return err
+		return toError(err, result.collection.keyFor)
 	}
 	if !found {
 		return ErrNotFound
@@ -465,7 +470,7 @@ type IDResult struct {
 func (result *IDResult) Get(bean interface{}) error {
 	found, err := result.session.Id(result.id).Get(bean)
 	if err != nil {
-		return err
+		return toError(err, result.collection.keyFor)
 	}
 	if !found {
 		return ErrNotFound
@@ -477,7 +482,7 @@ func (result *IDResult) Get(bean interface{}) error {
 func (result *IDResult) Delete() error {
 	rowsAffected, err := result.session.Id(result.id).Delete(result.instance())
 	if err != nil {
-		return err
+		return toError(err, result.collection.keyFor)
 	}
 	if rowsAffected == 0 {
 		return ErrNotFound
