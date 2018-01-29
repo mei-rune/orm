@@ -492,7 +492,12 @@ func (result *IDResult) Delete() error {
 
 // Update modifies one item by id.
 func (result *IDResult) Update(bean interface{}, isAllCols ...bool) error {
-	session := result.session.Id(result.id)
+	var session *xorm.Session
+	if _, ok := bean.(map[string]interface{}); ok && result.instance != nil {
+		session = result.session.Table(result.instance()).ID(result.id)
+	} else {
+		session = result.session.ID(result.id)
+	}
 	if len(isAllCols) == 0 || isAllCols[0] {
 		session = session.AllCols()
 	}
