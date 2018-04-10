@@ -467,6 +467,11 @@ type IDResult struct {
 }
 
 // Get get one item by id.
+func (result *IDResult) Exists() (bool, error) {
+	return result.session.Where("id = ?", result.id).Exist()
+}
+
+// Get get one item by id.
 func (result *IDResult) Get(bean interface{}) error {
 	found, err := result.session.Id(result.id).Get(bean)
 	if err != nil {
