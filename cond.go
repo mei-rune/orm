@@ -67,12 +67,20 @@ func toConds(constraints Cond, concat func(conds ...builder.Cond) builder.Cond) 
 						return cond
 					}
 				}
-				panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
+
+				return builder.Expr(k, v)
+				//panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
 			default:
-				if strings.ToLower(ss[0]) == "exists" {
+				if strings.ToLower(ss[0]) == "exists" || strings.ToLower(ss[0]) == "exists(" {
 					return toExists(k, v)
 				}
-				panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
+
+				if lower := strings.ToLower(k); strings.HasPrefix(lower, "exists(") {
+					return toExists(k, v)
+				}
+
+				return builder.Expr(k, v)
+				//panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
 			}
 		}
 	}
@@ -118,13 +126,26 @@ func toConds(constraints Cond, concat func(conds ...builder.Cond) builder.Cond) 
 					break
 				}
 			}
-			panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
+
+			conds = append(conds, builder.Expr(k, v))
+			break
+			// panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
 		default:
 			if lower := strings.ToLower(ss[0]); lower == "exists" || lower == "exists(" {
+				deleted = append(deleted, k)
 				conds = append(conds, toExists(k, v))
 				break
 			}
-			panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
+			if lower := strings.ToLower(k); strings.HasPrefix(lower, "exists(") {
+				deleted = append(deleted, k)
+				conds = append(conds, toExists(k, v))
+				break
+			}
+
+			deleted = append(deleted, k)
+			conds = append(conds, builder.Expr(k, v))
+			break
+			//panic(fmt.Errorf("unknow cond expression - \"%s %#v\"", k, v))
 		}
 	}
 	deletedSize := len(deleted)
@@ -181,6 +202,14 @@ func toExists(expr string, value interface{}) builder.Cond {
 func toArray(value interface{}) []interface{} {
 	if values, ok := value.([]interface{}); ok {
 		return values
+	}
+
+	if values, ok := value.([]string); ok {
+		ss := make([]interface{}, 0, len(values))
+		for _, s := range values {
+			ss = append(ss, s)
+		}
+		return ss
 	}
 
 	v := reflect.ValueOf(value)
