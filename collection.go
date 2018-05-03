@@ -38,6 +38,9 @@ func toError(e error, keyFor func(string) string) error {
 	}
 
 	if pe, ok := e.(*pq.Error); ok {
+		if keyFor == nil {
+			keyFor = keyForNull
+		}
 		switch pe.Code {
 		case "23505":
 			detail := strings.TrimPrefix(strings.TrimPrefix(pe.Detail, "Key ("), "键值\"(")
@@ -232,6 +235,9 @@ func (collection *Collection) Insert(bean interface{}) (interface{}, error) {
 		return nil, ErrInsertFail
 	}
 	table := collection.Engine.TableInfo(bean)
+	if table == nil {
+		return nil, nil
+	}
 	autoIncrColumn := table.AutoIncrColumn()
 	if autoIncrColumn == nil {
 		return nil, nil
