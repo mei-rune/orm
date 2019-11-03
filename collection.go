@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/go-xorm/builder"
-	"github.com/go-xorm/xorm"
+	"xorm.io/builder"
+	"xorm.io/xorm"
 	"github.com/lib/pq"
 )
 

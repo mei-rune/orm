@@ -3,7 +3,7 @@ package orm
 import (
 	"database/sql"
 
-	"github.com/go-xorm/xorm"
+	"xorm.io/xorm"
 )
 
 type DB struct {

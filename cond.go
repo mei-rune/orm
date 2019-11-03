@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/go-xorm/builder"
+	"xorm.io/builder"
 )
 
 // Cond is a map that defines conditions for a query and satisfies the
