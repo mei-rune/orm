@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/lib/pq"
 	"xorm.io/builder"
 	"xorm.io/xorm"
-	"github.com/lib/pq"
 )
 
 // ErrNotFound record isn't found
@@ -168,10 +168,13 @@ func (collection *Collection) query(sql string, args ...interface{}) *xorm.Sessi
 }
 
 func (collection *Collection) Exec(sqlStr string, args ...interface{}) (sql.Result, error) {
+	sqlAndArgs := make([]string, len(args)+1)
+	sqlAndArgs[0] = sqlStr
+	copy(sqlAndArgs[1:], args)
 	if collection.session == nil {
-		return collection.Engine.Exec(sqlStr, args...)
+		return collection.Engine.Exec(sqlAndArgs...)
 	}
-	return collection.session.Exec(sqlStr, args...)
+	return collection.session.Exec(sqlAndArgs...)
 }
 
 type Inserter interface {
