@@ -168,7 +168,7 @@ func (collection *Collection) query(sql string, args ...interface{}) *xorm.Sessi
 }
 
 func (collection *Collection) Exec(sqlStr string, args ...interface{}) (sql.Result, error) {
-	sqlAndArgs := make([]string, len(args)+1)
+	sqlAndArgs := make([]interface{}, len(args)+1)
 	sqlAndArgs[0] = sqlStr
 	copy(sqlAndArgs[1:], args)
 	if collection.session == nil {
