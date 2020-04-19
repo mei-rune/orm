@@ -103,7 +103,7 @@ type Collection struct {
 
 func New(instance func() interface{}, keyFor func(string) string) func(engine *xorm.Engine) *Collection {
 	return func(engine *xorm.Engine) *Collection {
-		tableName := engine.TableInfo(instance()).Name
+		tableName := engine.TableName(instance())
 		return &Collection{Engine: engine, instance: instance, keyFor: keyFor, tableName: tableName}
 	}
 }
@@ -168,14 +168,13 @@ func (collection *Collection) query(sql string, args ...interface{}) *xorm.Sessi
 }
 
 func (collection *Collection) Exec(sqlStr string, args ...interface{}) (sql.Result, error) {
-	sqlOrArgs := make([]interface{}, 1+len(args))
-	sqlOrArgs[0] = sqlStr
-	copy(sqlOrArgs[1:], args)
-
+	sqlAndArgs := make([]interface{}, len(args)+1)
+	sqlAndArgs[0] = sqlStr
+	copy(sqlAndArgs[1:], args)
 	if collection.session == nil {
-		return collection.Engine.Exec(sqlOrArgs...)
+		return collection.Engine.Exec(sqlAndArgs...)
 	}
-	return collection.session.Exec(sqlOrArgs...)
+	return collection.session.Exec(sqlAndArgs...)
 }
 
 type Inserter interface {
