@@ -237,9 +237,9 @@ func (collection *Collection) Insert(bean interface{}) (interface{}, error) {
 	if rowsAffected == 0 {
 		return nil, ErrInsertFail
 	}
-	table := collection.Engine.TableInfo(bean)
-	if table == nil {
-		return nil, nil
+	table, err := collection.Engine.TableInfo(bean)
+	if err != nil {
+		return nil, toError(err, collection.keyFor)
 	}
 	autoIncrColumn := table.AutoIncrColumn()
 	if autoIncrColumn == nil {
@@ -482,7 +482,7 @@ func (result *IDResult) Exists() (bool, error) {
 
 // Get get one item by id.
 func (result *IDResult) Get(bean interface{}) error {
-	found, err := result.session.Id(result.id).Get(bean)
+	found, err := result.session.ID(result.id).Get(bean)
 	if err != nil {
 		return toError(err, result.collection.keyFor)
 	}
@@ -494,7 +494,7 @@ func (result *IDResult) Get(bean interface{}) error {
 
 // Delete deletes one item by id.
 func (result *IDResult) Delete() error {
-	rowsAffected, err := result.session.Id(result.id).Delete(result.instance())
+	rowsAffected, err := result.session.ID(result.id).Delete(result.instance())
 	if err != nil {
 		return toError(err, result.collection.keyFor)
 	}
