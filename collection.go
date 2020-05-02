@@ -9,6 +9,7 @@ import (
 	"github.com/lib/pq"
 	"xorm.io/builder"
 	"xorm.io/xorm"
+	"github.com/runner-mei/validation"
 )
 
 // ErrNotFound record isn't found
@@ -18,14 +19,27 @@ var ErrNotFound = errors.New("record isn't found")
 var ErrInsertFail = errors.New("create record fail")
 
 // ValidationError store the Message & Key of a validation error
-type ValidationError struct {
-	Code, Message, Key string
-}
+//
+// type ValidationError struct {
+// 	Code, Message, Key string
+// }
+//
+type ValidationError = validation.ValidationError
+
+var _ validation.ValidatableError = &Error{}
 
 // Error store a error with validation errors
 type Error struct {
 	Validations []ValidationError
 	e           error
+}
+
+func (e *Error) IsValidationErrors() bool {
+	return len(e.Validations) > 0 
+}
+
+func (e *Error) ToValidationErrors() []ValidationError {
+	return e.Validations
 }
 
 func (err *Error) Error() string {
