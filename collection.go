@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/lib/pq"
+	"github.com/runner-mei/validation"
 	"xorm.io/builder"
 	"xorm.io/xorm"
-	"github.com/runner-mei/validation"
 )
 
 // ErrNotFound record isn't found
@@ -35,7 +35,7 @@ type Error struct {
 }
 
 func (e *Error) IsValidationErrors() bool {
-	return len(e.Validations) > 0 
+	return len(e.Validations) > 0
 }
 
 func (e *Error) ToValidationErrors() []ValidationError {
@@ -424,6 +424,11 @@ func (result *QueryResult) Asc(colNames ...string) *QueryResult {
 // Columns only use the parameters as select columns
 func (result *QueryResult) Columns(colNames ...string) *QueryResult {
 	result.session = result.session.Cols(colNames...)
+	return result
+}
+
+func (result *QueryResult) Distinct(colNames ...string) *QueryResult {
+	result.session = result.session.Distinct(colNames...)
 	return result
 }
 
